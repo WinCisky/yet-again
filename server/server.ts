@@ -41,9 +41,9 @@ webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
 // All times are in UTC (ISO 8601 format).
 // ---------------------------------------------------------------------------
 const NOTIFICATIONS = [
-  { date: "2026-04-01T09:00:00Z", title: "Morning Reminder", body: "Time to start your day!" },
-  { date: "2026-04-01T12:00:00Z", title: "Lunch Break", body: "Don't forget to eat!" },
-  { date: "2026-04-01T18:00:00Z", title: "Evening Check-in", body: "How was your day?" },
+  { date: "2026-04-01T20:30:00Z", title: "Morning Reminder", body: "Time to start your day!" },
+  { date: "2026-04-01T21:30:00Z", title: "Lunch Break", body: "Don't forget to eat!" },
+  { date: "2026-04-01T21:45:00Z", title: "Evening Check-in", body: "How was your day?" },
 ];
 
 // ---------------------------------------------------------------------------

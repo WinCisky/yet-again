@@ -9,12 +9,7 @@
  *  5. Send the subscription object to the server's /subscribe endpoint
  */
 
-// ---------------------------------------------------------------------------
-// IMPORTANT: Update this constant to your Deno Deploy project URL before
-// deploying. The app will not function without a valid server URL.
-// See README.md → "Setup" → step 3 for instructions.
-// ---------------------------------------------------------------------------
-const SERVER_URL = "https://your-deno-deploy-url.deno.dev";
+const SERVER_URL = "https://yet-again.simo.deno.net";
 
 const btn = document.getElementById("enableBtn");
 const statusEl = document.getElementById("status");
