@@ -53,12 +53,18 @@ btn.addEventListener("click", async () => {
     const keyRes = await fetch(`${SERVER_URL}/vapid-key`);
     if (!keyRes.ok) throw new Error(`Server returned ${keyRes.status} for /vapid-key`);
     const { publicKey } = await keyRes.json();
+    const applicationServerKey = urlBase64ToUint8Array(publicKey);
 
-    // Step 4: Subscribe to push using the VAPID key
+    // Step 4: Check for existing subscription and subscribe
     setStatus("Subscribing to push notifications…");
-    const subscription = await registration.pushManager.subscribe({
+    let subscription = await registration.pushManager.getSubscription();
+    if (subscription) {
+      // Unsubscribe old subscription to avoid key conflicts
+      await subscription.unsubscribe();
+    }
+    subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true, // required: all pushes must show a notification
-      applicationServerKey: urlBase64ToUint8Array(publicKey),
+      applicationServerKey,
     });
 
     // Step 5: Send the subscription to the server so it can push to us later
