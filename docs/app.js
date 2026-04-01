@@ -44,9 +44,9 @@ btn.addEventListener("click", async () => {
   try {
     // Step 2: Register the service worker
     setStatus("Registering service worker…");
-    const registration = await navigator.serviceWorker.register("sw.js");
+    await navigator.serviceWorker.register("sw.js");
     // Wait for the service worker to be ready before subscribing
-    await navigator.serviceWorker.ready;
+    const registration = await navigator.serviceWorker.ready;
 
     // Step 3: Fetch the VAPID public key from the server
     setStatus("Fetching VAPID key from server…");
