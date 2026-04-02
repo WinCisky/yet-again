@@ -41,9 +41,9 @@ webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
 // All times are in UTC (ISO 8601 format).
 // ---------------------------------------------------------------------------
 const NOTIFICATIONS = [
-  { date: "2026-04-01T21:30:00Z", title: "Morning Reminder", body: "Time to start your day!" },
-  { date: "2026-04-01T22:30:00Z", title: "Lunch Break", body: "Don't forget to eat!" },
-  { date: "2026-04-01T22:45:00Z", title: "Evening Check-in", body: "How was your day?" },
+  { date: "2026-04-02T21:30:00Z", title: "Morning Reminder", body: "Time to start your day!" },
+  { date: "2026-04-02T22:30:00Z", title: "Lunch Break", body: "Don't forget to eat!" },
+  { date: "2026-04-02T22:45:00Z", title: "Evening Check-in", body: "How was your day?" },
 ];
 
 // ---------------------------------------------------------------------------
@@ -124,40 +124,58 @@ function handler(req: Request): Response {
 // ---------------------------------------------------------------------------
 // Cron job — runs every minute, checks if any notification is due
 // ---------------------------------------------------------------------------
-Deno.cron("check-notifications", "* * * * *", async () => {
+Deno.cron("check-notifications", "*/5 * * * *", async () => {
+  // send a test notification to all of the subscribed clients
   const now = new Date();
 
-  for (const notification of NOTIFICATIONS) {
-    const notifDate = new Date(notification.date);
-
-    // Check if this notification's minute has arrived and it hasn't been sent yet
-    const sameMinute =
-      notifDate.getUTCFullYear() === now.getUTCFullYear() &&
-      notifDate.getUTCMonth() === now.getUTCMonth() &&
-      notifDate.getUTCDate() === now.getUTCDate() &&
-      notifDate.getUTCHours() === now.getUTCHours() &&
-      notifDate.getUTCMinutes() === now.getUTCMinutes();
-
-    if (sameMinute && !sentNotifications.has(notification.date)) {
-      console.log(`Sending notification: "${notification.title}" to ${subscriptions.size} subscriber(s)`);
-      sentNotifications.add(notification.date);
-
-      // Send to all stored subscriptions
-      const payload = JSON.stringify({ title: notification.title, body: notification.body });
-      const sendPromises = [...subscriptions].map(async (subJson) => {
-        try {
-          const sub = JSON.parse(subJson);
-          await webpush.sendNotification(sub, payload);
-        } catch (err) {
-          console.error("Failed to send push to subscriber:", err);
-          // Remove invalid/expired subscriptions
-          subscriptions.delete(subJson);
-        }
-      });
-
-      await Promise.all(sendPromises);
+  // Send to all stored subscriptions
+  const payload = JSON.stringify({ title: `test ${now.toISOString()}`, body: `hello ${now.toDateString()}`});
+  const sendPromises = [...subscriptions].map(async (subJson) => {
+    try {
+      const sub = JSON.parse(subJson);
+      await webpush.sendNotification(sub, payload);
+    } catch (err) {
+      console.error("Failed to send push to subscriber:", err);
+      // Remove invalid/expired subscriptions
+      subscriptions.delete(subJson);
     }
-  }
+  });
+
+  await Promise.all(sendPromises);
+
+  // const now = new Date();
+
+  // for (const notification of NOTIFICATIONS) {
+  //   const notifDate = new Date(notification.date);
+
+  //   // Check if this notification's minute has arrived and it hasn't been sent yet
+  //   const sameMinute =
+  //     notifDate.getUTCFullYear() === now.getUTCFullYear() &&
+  //     notifDate.getUTCMonth() === now.getUTCMonth() &&
+  //     notifDate.getUTCDate() === now.getUTCDate() &&
+  //     notifDate.getUTCHours() === now.getUTCHours() &&
+  //     notifDate.getUTCMinutes() === now.getUTCMinutes();
+
+  //   if (sameMinute && !sentNotifications.has(notification.date)) {
+  //     console.log(`Sending notification: "${notification.title}" to ${subscriptions.size} subscriber(s)`);
+  //     sentNotifications.add(notification.date);
+
+  //     // Send to all stored subscriptions
+  //     const payload = JSON.stringify({ title: notification.title, body: notification.body });
+  //     const sendPromises = [...subscriptions].map(async (subJson) => {
+  //       try {
+  //         const sub = JSON.parse(subJson);
+  //         await webpush.sendNotification(sub, payload);
+  //       } catch (err) {
+  //         console.error("Failed to send push to subscriber:", err);
+  //         // Remove invalid/expired subscriptions
+  //         subscriptions.delete(subJson);
+  //       }
+  //     });
+
+  //     await Promise.all(sendPromises);
+  //   }
+  // }
 });
 
 // ---------------------------------------------------------------------------
