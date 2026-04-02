@@ -39,22 +39,23 @@ webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
 // Open Deno KV once at startup and reuse it for all requests and cron jobs.
 const kv = await Deno.openKv();
 
-// ---------------------------------------------------------------------------
-// Hardcoded notification schedule — edit these to your desired dates/times
-// All times are in UTC (ISO 8601 format).
-// ---------------------------------------------------------------------------
-const NOTIFICATIONS = [
-  { date: "2026-04-02T21:30:00Z", title: "Morning Reminder", body: "Time to start your day!" },
-  { date: "2026-04-02T22:30:00Z", title: "Lunch Break", body: "Don't forget to eat!" },
-  { date: "2026-04-02T22:45:00Z", title: "Evening Check-in", body: "How was your day?" },
-];
-
 interface PushSubscriptionLike {
   endpoint: string;
   keys?: {
     p256dh?: string;
     auth?: string;
   };
+}
+
+interface EventType {
+  id: string;
+  name: string;
+  color: string;
+}
+
+interface EventTime {
+  hour: number;
+  minute: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -136,6 +137,175 @@ async function handler(req: Request): Promise<Response> {
     }
   }
 
+  // -------------------------------------------------------------------------
+  // POST /event-types — create a new event type for a user
+  // Body: { endpoint, name, color }
+  // -------------------------------------------------------------------------
+  if (req.method === "POST" && url.pathname === "/event-types") {
+    try {
+      const body = await req.json();
+      const { endpoint, name, color } = body as { endpoint?: string; name?: string; color?: string };
+      if (!endpoint || !name || !color) {
+        return new Response(
+          JSON.stringify({ error: "Missing endpoint, name, or color" }),
+          { status: 400, headers: { ...cors, "Content-Type": "application/json" } },
+        );
+      }
+      const id = crypto.randomUUID();
+      const eventType: EventType = { id, name, color };
+      await kv.set(["event_types", endpoint, id], eventType);
+      return new Response(
+        JSON.stringify(eventType),
+        { status: 201, headers: { ...cors, "Content-Type": "application/json" } },
+      );
+    } catch {
+      return new Response(
+        JSON.stringify({ error: "Invalid JSON body" }),
+        { status: 400, headers: { ...cors, "Content-Type": "application/json" } },
+      );
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // GET /event-types?endpoint=... — get all event types for a user
+  // -------------------------------------------------------------------------
+  if (req.method === "GET" && url.pathname === "/event-types") {
+    const endpoint = url.searchParams.get("endpoint");
+    if (!endpoint) {
+      return new Response(
+        JSON.stringify({ error: "Missing endpoint query parameter" }),
+        { status: 400, headers: { ...cors, "Content-Type": "application/json" } },
+      );
+    }
+    const types: EventType[] = [];
+    for await (const entry of kv.list<EventType>({ prefix: ["event_types", endpoint] })) {
+      if (entry.value) types.push(entry.value);
+    }
+    return new Response(
+      JSON.stringify(types),
+      { headers: { ...cors, "Content-Type": "application/json" } },
+    );
+  }
+
+  // -------------------------------------------------------------------------
+  // POST /event-dates — set dates for an event type for a user
+  // Body: { endpoint, eventTypeId, dates: ["2026-04-02", ...] }
+  // -------------------------------------------------------------------------
+  if (req.method === "POST" && url.pathname === "/event-dates") {
+    try {
+      const body = await req.json();
+      const { endpoint, eventTypeId, dates } = body as {
+        endpoint?: string;
+        eventTypeId?: string;
+        dates?: string[];
+      };
+      if (!endpoint || !eventTypeId || !Array.isArray(dates)) {
+        return new Response(
+          JSON.stringify({ error: "Missing endpoint, eventTypeId, or dates" }),
+          { status: 400, headers: { ...cors, "Content-Type": "application/json" } },
+        );
+      }
+      // Delete existing dates for this event type, then write new ones
+      for await (const entry of kv.list({ prefix: ["event_dates", endpoint, eventTypeId] })) {
+        await kv.delete(entry.key);
+      }
+      for (const date of dates) {
+        await kv.set(["event_dates", endpoint, eventTypeId, date], date);
+      }
+      return new Response(
+        JSON.stringify({ ok: true, dates }),
+        { status: 201, headers: { ...cors, "Content-Type": "application/json" } },
+      );
+    } catch {
+      return new Response(
+        JSON.stringify({ error: "Invalid JSON body" }),
+        { status: 400, headers: { ...cors, "Content-Type": "application/json" } },
+      );
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // GET /event-dates?endpoint=...&eventTypeId=... — get dates for an event type
+  // -------------------------------------------------------------------------
+  if (req.method === "GET" && url.pathname === "/event-dates") {
+    const endpoint = url.searchParams.get("endpoint");
+    const eventTypeId = url.searchParams.get("eventTypeId");
+    if (!endpoint || !eventTypeId) {
+      return new Response(
+        JSON.stringify({ error: "Missing endpoint or eventTypeId query parameter" }),
+        { status: 400, headers: { ...cors, "Content-Type": "application/json" } },
+      );
+    }
+    const dates: string[] = [];
+    for await (const entry of kv.list<string>({ prefix: ["event_dates", endpoint, eventTypeId] })) {
+      if (entry.value) dates.push(entry.value);
+    }
+    return new Response(
+      JSON.stringify(dates),
+      { headers: { ...cors, "Content-Type": "application/json" } },
+    );
+  }
+
+  // -------------------------------------------------------------------------
+  // POST /event-times — set times for an event type for a user
+  // Body: { endpoint, eventTypeId, times: [{ hour: 14, minute: 30 }, ...] }
+  // -------------------------------------------------------------------------
+  if (req.method === "POST" && url.pathname === "/event-times") {
+    try {
+      const body = await req.json();
+      const { endpoint, eventTypeId, times } = body as {
+        endpoint?: string;
+        eventTypeId?: string;
+        times?: EventTime[];
+      };
+      if (!endpoint || !eventTypeId || !Array.isArray(times)) {
+        return new Response(
+          JSON.stringify({ error: "Missing endpoint, eventTypeId, or times" }),
+          { status: 400, headers: { ...cors, "Content-Type": "application/json" } },
+        );
+      }
+      // Delete existing times for this event type, then write new ones
+      for await (const entry of kv.list({ prefix: ["event_times", endpoint, eventTypeId] })) {
+        await kv.delete(entry.key);
+      }
+      for (const t of times) {
+        const key = `${String(t.hour).padStart(2, "0")}:${String(t.minute).padStart(2, "0")}`;
+        await kv.set(["event_times", endpoint, eventTypeId, key], { hour: t.hour, minute: t.minute });
+      }
+      return new Response(
+        JSON.stringify({ ok: true, times }),
+        { status: 201, headers: { ...cors, "Content-Type": "application/json" } },
+      );
+    } catch {
+      return new Response(
+        JSON.stringify({ error: "Invalid JSON body" }),
+        { status: 400, headers: { ...cors, "Content-Type": "application/json" } },
+      );
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // GET /event-times?endpoint=...&eventTypeId=... — get times for an event type
+  // -------------------------------------------------------------------------
+  if (req.method === "GET" && url.pathname === "/event-times") {
+    const endpoint = url.searchParams.get("endpoint");
+    const eventTypeId = url.searchParams.get("eventTypeId");
+    if (!endpoint || !eventTypeId) {
+      return new Response(
+        JSON.stringify({ error: "Missing endpoint or eventTypeId query parameter" }),
+        { status: 400, headers: { ...cors, "Content-Type": "application/json" } },
+      );
+    }
+    const times: EventTime[] = [];
+    for await (const entry of kv.list<EventTime>({ prefix: ["event_times", endpoint, eventTypeId] })) {
+      if (entry.value) times.push(entry.value);
+    }
+    return new Response(
+      JSON.stringify(times),
+      { headers: { ...cors, "Content-Type": "application/json" } },
+    );
+  }
+
   // 404 for everything else
   return new Response("Not Found", { status: 404, headers: cors });
 }
@@ -144,63 +314,62 @@ async function handler(req: Request): Promise<Response> {
 // Cron job — runs every minute, checks if any notification is due
 // ---------------------------------------------------------------------------
 Deno.cron("check-notifications", "*/5 * * * *", async () => {
-  // send a test notification to all of the subscribed clients
   const now = new Date();
-  const subscriptions: Array<{ key: Deno.KvKey; value: PushSubscriptionLike }> = [];
+  const fiveMinAgo = new Date(now.getTime() - 5 * 60 * 1000);
+
+  // Today's date string in UTC (YYYY-MM-DD)
+  const todayStr = now.toISOString().slice(0, 10);
+
+  // Current time in minutes since midnight (UTC)
+  const nowMinutes = now.getUTCHours() * 60 + now.getUTCMinutes();
+  const agoMinutes = fiveMinAgo.getUTCHours() * 60 + fiveMinAgo.getUTCMinutes();
+
+  // Load all subscriptions
+  const subscriptions: Array<{ endpoint: string; value: PushSubscriptionLike }> = [];
   for await (const entry of kv.list<PushSubscriptionLike>({ prefix: ["subscriptions"] })) {
     if (entry.value) {
-      subscriptions.push({ key: entry.key, value: entry.value });
+      subscriptions.push({ endpoint: entry.value.endpoint, value: entry.value });
     }
   }
-  console.log(`Loaded ${subscriptions.length} subscriber(s) from KV.`);
+  console.log(`[cron] ${now.toISOString()} — ${subscriptions.length} subscriber(s)`);
 
-  // Send to all stored subscriptions
-  const payload = JSON.stringify({ title: `test ${now.toISOString()}`, body: `hello ${now.toDateString()}` });
-  const sendPromises = subscriptions.map(async (entry) => {
-    try {
-      await webpush.sendNotification(entry.value, payload);
-    } catch (err) {
-      console.error("Failed to send push to subscriber:", err);
-      // Remove invalid/expired subscriptions
-      await kv.delete(entry.key);
+  for (const sub of subscriptions) {
+    // Iterate event types for this user
+    for await (const etEntry of kv.list<EventType>({ prefix: ["event_types", sub.endpoint] })) {
+      const eventType = etEntry.value;
+      if (!eventType) continue;
+
+      // Check if today is one of the configured dates for this event type
+      const dateEntry = await kv.get<string>(["event_dates", sub.endpoint, eventType.id, todayStr]);
+      if (!dateEntry.value) continue;
+
+      // Check if any configured time falls within the last 5 minutes
+      for await (const timeEntry of kv.list<EventTime>({ prefix: ["event_times", sub.endpoint, eventType.id] })) {
+        const t = timeEntry.value;
+        if (!t) continue;
+        const tMinutes = t.hour * 60 + t.minute;
+
+        // Handle midnight wrap-around
+        const inWindow = agoMinutes <= nowMinutes
+          ? tMinutes > agoMinutes && tMinutes <= nowMinutes
+          : tMinutes > agoMinutes || tMinutes <= nowMinutes;
+
+        if (inWindow) {
+          console.log(`[cron] Sending notification for "${eventType.name}" to subscriber`);
+          const payload = JSON.stringify({
+            title: eventType.name,
+            body: `Evento: ${eventType.name} — ${String(t.hour).padStart(2, "0")}:${String(t.minute).padStart(2, "0")}`,
+          });
+          try {
+            await webpush.sendNotification(sub.value, payload);
+          } catch (err) {
+            console.error("[cron] Failed to send push:", err);
+            await kv.delete(["subscriptions", sub.endpoint]);
+          }
+        }
+      }
     }
-  });
-
-  await Promise.all(sendPromises);
-
-  // const now = new Date();
-
-  // for (const notification of NOTIFICATIONS) {
-  //   const notifDate = new Date(notification.date);
-
-  //   // Check if this notification's minute has arrived and it hasn't been sent yet
-  //   const sameMinute =
-  //     notifDate.getUTCFullYear() === now.getUTCFullYear() &&
-  //     notifDate.getUTCMonth() === now.getUTCMonth() &&
-  //     notifDate.getUTCDate() === now.getUTCDate() &&
-  //     notifDate.getUTCHours() === now.getUTCHours() &&
-  //     notifDate.getUTCMinutes() === now.getUTCMinutes();
-
-  //   if (sameMinute && !sentNotifications.has(notification.date)) {
-  //     console.log(`Sending notification: "${notification.title}" to ${subscriptions.size} subscriber(s)`);
-  //     sentNotifications.add(notification.date);
-
-  //     // Send to all stored subscriptions
-  //     const payload = JSON.stringify({ title: notification.title, body: notification.body });
-  //     const sendPromises = [...subscriptions].map(async (subJson) => {
-  //       try {
-  //         const sub = JSON.parse(subJson);
-  //         await webpush.sendNotification(sub, payload);
-  //       } catch (err) {
-  //         console.error("Failed to send push to subscriber:", err);
-  //         // Remove invalid/expired subscriptions
-  //         subscriptions.delete(subJson);
-  //       }
-  //     });
-
-  //     await Promise.all(sendPromises);
-  //   }
-  // }
+  }
 });
 
 // ---------------------------------------------------------------------------
