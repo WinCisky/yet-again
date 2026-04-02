@@ -3,9 +3,9 @@
  *
  * Responsibilities:
  *  - Expose GET /vapid-key so the client can subscribe to Web Push
- *  - Expose POST /subscribe to store push subscriptions (in-memory)
+ *  - Expose POST /subscribe to store push subscriptions in Deno KV
  *  - Run a Deno.cron job every minute to check if any notification is due,
- *    and if so send a Web Push message to all stored subscribers
+ *    and if so send a Web Push message to all subscribers stored in KV
  *
  * Required environment variables:
  *  VAPID_PUBLIC_KEY   — base64url-encoded VAPID public key
@@ -36,6 +36,9 @@ if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
 
 webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
 
+// Open Deno KV once at startup and reuse it for all requests and cron jobs.
+const kv = await Deno.openKv();
+
 // ---------------------------------------------------------------------------
 // Hardcoded notification schedule — edit these to your desired dates/times
 // All times are in UTC (ISO 8601 format).
@@ -46,16 +49,13 @@ const NOTIFICATIONS = [
   { date: "2026-04-02T22:45:00Z", title: "Evening Check-in", body: "How was your day?" },
 ];
 
-// ---------------------------------------------------------------------------
-// In-memory stores — these reset on each deployment/restart.
-// For persistence across restarts, use Deno KV instead.
-// ---------------------------------------------------------------------------
-
-// Set of serialized PushSubscription JSON strings
-const subscriptions = new Set<string>();
-
-// Set of notification date strings that have already been sent, to prevent duplicates
-const sentNotifications = new Set<string>();
+interface PushSubscriptionLike {
+  endpoint: string;
+  keys?: {
+    p256dh?: string;
+    auth?: string;
+  };
+}
 
 // ---------------------------------------------------------------------------
 // CORS helper — allow the GitHub Pages origin and localhost for dev
@@ -80,7 +80,7 @@ function corsHeaders(origin: string | null): Record<string, string> {
 // ---------------------------------------------------------------------------
 // HTTP request handler
 // ---------------------------------------------------------------------------
-function handler(req: Request): Response {
+async function handler(req: Request): Promise<Response> {
   const url = new URL(req.url);
   const origin = req.headers.get("origin");
   const cors = corsHeaders(origin);
@@ -100,21 +100,40 @@ function handler(req: Request): Response {
 
   // POST /subscribe — store a new push subscription
   if (req.method === "POST" && url.pathname === "/subscribe") {
-    return req.json().then((body: unknown) => {
-      const sub = JSON.stringify(body);
-      subscriptions.add(sub);
-      console.log(`Subscription stored. Total subscribers: ${subscriptions.size}`);
+    try {
+      const body = await req.json();
+      if (
+        typeof body !== "object" ||
+        body === null ||
+        !("endpoint" in body) ||
+        typeof (body as PushSubscriptionLike).endpoint !== "string"
+      ) {
+        return new Response(
+          JSON.stringify({ error: "Invalid subscription payload" }),
+          { status: 400, headers: { ...cors, "Content-Type": "application/json" } },
+        );
+      }
+
+      const subscription = body as PushSubscriptionLike;
+      await kv.set(["subscriptions", subscription.endpoint], subscription);
+
+      let count = 0;
+      for await (const _entry of kv.list({ prefix: ["subscriptions"] })) {
+        count += 1;
+      }
+      console.log(`Subscription stored in KV. Total subscribers: ${count}`);
+
       return new Response(
         JSON.stringify({ ok: true }),
         { status: 201, headers: { ...cors, "Content-Type": "application/json" } },
       );
-    }).catch((err) => {
+    } catch (err) {
       console.error("Failed to parse subscription body:", err);
       return new Response(
         JSON.stringify({ error: "Invalid JSON body" }),
         { status: 400, headers: { ...cors, "Content-Type": "application/json" } },
       );
-    });
+    }
   }
 
   // 404 for everything else
@@ -127,18 +146,23 @@ function handler(req: Request): Response {
 Deno.cron("check-notifications", "*/5 * * * *", async () => {
   // send a test notification to all of the subscribed clients
   const now = new Date();
-  console.log(JSON.stringify(subscriptions));
+  const subscriptions: Array<{ key: Deno.KvKey; value: PushSubscriptionLike }> = [];
+  for await (const entry of kv.list<PushSubscriptionLike>({ prefix: ["subscriptions"] })) {
+    if (entry.value) {
+      subscriptions.push({ key: entry.key, value: entry.value });
+    }
+  }
+  console.log(`Loaded ${subscriptions.length} subscriber(s) from KV.`);
 
   // Send to all stored subscriptions
-  const payload = JSON.stringify({ title: `test ${now.toISOString()}`, body: `hello ${now.toDateString()}`});
-  const sendPromises = [...subscriptions].map(async (subJson) => {
+  const payload = JSON.stringify({ title: `test ${now.toISOString()}`, body: `hello ${now.toDateString()}` });
+  const sendPromises = subscriptions.map(async (entry) => {
     try {
-      const sub = JSON.parse(subJson);
-      await webpush.sendNotification(sub, payload);
+      await webpush.sendNotification(entry.value, payload);
     } catch (err) {
       console.error("Failed to send push to subscriber:", err);
       // Remove invalid/expired subscriptions
-      subscriptions.delete(subJson);
+      await kv.delete(entry.key);
     }
   });
 
