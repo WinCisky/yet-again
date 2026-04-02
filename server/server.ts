@@ -127,6 +127,7 @@ function handler(req: Request): Response {
 Deno.cron("check-notifications", "*/5 * * * *", async () => {
   // send a test notification to all of the subscribed clients
   const now = new Date();
+  console.log(JSON.stringify(subscriptions));
 
   // Send to all stored subscriptions
   const payload = JSON.stringify({ title: `test ${now.toISOString()}`, body: `hello ${now.toDateString()}`});
