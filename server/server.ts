@@ -103,7 +103,7 @@ Deno.cron("check-notifications", "*/5 * * * *", async () => {
           console.log(`[cron] Sending notification for "${eventType.name}" to subscriber`);
           const payload = JSON.stringify({
             title: eventType.name,
-            body: `Evento: ${eventType.name} — ${String(t.hour).padStart(2, "0")}:${String(t.minute).padStart(2, "0")}`,
+            body: `Event: ${eventType.name} — ${String(t.hour).padStart(2, "0")}:${String(t.minute).padStart(2, "0")}`,
           });
           try {
             await webpush.sendNotification(sub.value, payload);

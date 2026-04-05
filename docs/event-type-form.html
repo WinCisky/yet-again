@@ -3,24 +3,29 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Yet Again — Nuova Tipologia</title>
+  <title>Yet Again — New Event Type</title>
   <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#1a1a2e" />
 </head>
 <body style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;margin:0;">
-  <a href="event-types.html" style="margin:1rem 0 0 0;padding:0.25rem 0.5rem;">← Indietro</a>
-  <h1 id="pageTitle" style="margin:1rem 0 0.25rem 0;">Nuova Tipologia</h1>
+  <a href="index.html" style="margin:1rem 0 0 0;padding:0.25rem 0.5rem;">← Back</a>
+  <h1 id="pageTitle" style="margin:1rem 0 0.25rem 0;">New Event Type</h1>
   <div id="status" style="margin:1rem 0;"></div>
 
   <form id="form" style="display:flex;flex-direction:column;align-items:center;">
-    <label style="margin:0.5rem 0 0.25rem 0;">Nome</label>
+    <label style="margin:0.5rem 0 0.25rem 0;">Name</label>
     <input id="nameInput" type="text" required style="padding:0.25rem 0.5rem;" />
 
-    <label style="margin:0.5rem 0 0.25rem 0;">Colore</label>
+    <label style="margin:0.5rem 0 0.25rem 0;">Color</label>
     <input id="colorInput" type="color" value="#e94560" required />
 
-    <button type="submit" id="submitBtn" style="margin:1rem 0 0 0;padding:0.25rem 0.5rem;">Crea</button>
+    <button type="submit" id="submitBtn" style="margin:1rem 0 0 0;padding:0.25rem 0.5rem;">Create</button>
   </form>
+
+  <div id="editLinks" style="display:none;flex-direction:column;align-items:center;margin:1rem 0 0 0;">
+    <a id="timesLink" href="#" style="margin:0.5rem 0 0 0;padding:0.25rem 0.5rem;">Notification Times</a>
+    <a id="datesLink" href="#" style="margin:0.5rem 0 0 0;padding:0.25rem 0.5rem;">Event Dates</a>
+  </div>
 
   <script>
     const SERVER_URL = "https://yet-again.simo.deno.net";
@@ -45,24 +50,31 @@
     const params = new URLSearchParams(window.location.search);
     const editId = params.get("id");
 
+    const editLinksDiv = document.getElementById("editLinks");
+    const timesLink = document.getElementById("timesLink");
+    const datesLink = document.getElementById("datesLink");
+
     async function loadExisting() {
       if (!editId) return;
-      pageTitle.textContent = "Modifica Tipologia";
-      submitBtn.textContent = "Salva";
+      pageTitle.textContent = "Edit Event Type";
+      submitBtn.textContent = "Save";
+      editLinksDiv.style.display = "flex";
+      timesLink.href = `event-times.html?eventTypeId=${encodeURIComponent(editId)}`;
+      datesLink.href = `event-dates.html?eventTypeId=${encodeURIComponent(editId)}`;
       const endpoint = await getEndpoint();
-      if (!endpoint) { setStatus("Nessuna sottoscrizione trovata."); return; }
-      setStatus("Caricamento…");
+      if (!endpoint) { setStatus("No subscription found."); return; }
+      setStatus("Loading…");
       try {
         const res = await fetch(`${SERVER_URL}/event-types?endpoint=${encodeURIComponent(endpoint)}`);
-        if (!res.ok) throw new Error(`Errore server: ${res.status}`);
+        if (!res.ok) throw new Error(`Server error: ${res.status}`);
         const types = await res.json();
         const existing = types.find(t => t.id === editId);
-        if (!existing) { setStatus("Tipologia non trovata."); return; }
+        if (!existing) { setStatus("Event type not found."); return; }
         nameInput.value = existing.name;
         colorInput.value = existing.color;
         setStatus("");
       } catch (err) {
-        setStatus(`❌ Errore: ${err.message}`);
+        setStatus(`❌ Error: ${err.message}`);
       }
     }
 
@@ -73,14 +85,14 @@
       const name = nameInput.value.trim();
       const color = colorInput.value;
 
-      if (!name) { setStatus("Inserisci un nome."); return; }
-      if (!color) { setStatus("Seleziona un colore."); return; }
+      if (!name) { setStatus("Enter a name."); return; }
+      if (!color) { setStatus("Select a color."); return; }
 
       const endpoint = await getEndpoint();
-      if (!endpoint) { setStatus("Nessuna sottoscrizione trovata."); return; }
+      if (!endpoint) { setStatus("No subscription found."); return; }
 
       submitBtn.disabled = true;
-      setStatus("Salvataggio…");
+      setStatus("Saving…");
 
       try {
         const method = editId ? "PUT" : "POST";
@@ -95,11 +107,11 @@
         });
         if (!res.ok) {
           const err = await res.json().catch(() => ({}));
-          throw new Error(err.error || `Errore server: ${res.status}`);
+          throw new Error(err.error || `Server error: ${res.status}`);
         }
-        window.location.href = "event-types.html";
+        window.location.href = "index.html";
       } catch (err) {
-        setStatus(`❌ Errore: ${err.message}`);
+        setStatus(`❌ Error: ${err.message}`);
         submitBtn.disabled = false;
       }
     });

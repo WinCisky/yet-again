@@ -5,6 +5,7 @@ const unsubscribeBtn = document.getElementById("unsubscribeBtn");
 const notSubscribedDiv = document.getElementById("notSubscribed");
 const subscribedDiv = document.getElementById("subscribed");
 const statusEl = document.getElementById("status");
+const contentEl = document.getElementById("content");
 
 function setStatus(msg) {
   statusEl.textContent = msg;
@@ -42,12 +43,82 @@ async function getExistingSubscription() {
   return await registration.pushManager.getSubscription();
 }
 
+async function getEndpoint() {
+  const sub = await getExistingSubscription();
+  return sub ? sub.endpoint : null;
+}
+
+async function deleteType(endpoint, id) {
+  if (!confirm("Delete this event type?")) return;
+  try {
+    const res = await fetch(`${SERVER_URL}/event-types`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ endpoint, id }),
+    });
+    if (!res.ok) throw new Error(`Server error: ${res.status}`);
+    loadEventTypes();
+  } catch (err) {
+    setStatus(`❌ Error: ${err.message}`);
+  }
+}
+
+function renderTypes(types, endpoint) {
+  contentEl.innerHTML = "";
+  if (types.length === 0) {
+    contentEl.textContent = "No event types configured.";
+    return;
+  }
+  for (const t of types) {
+    const row = document.createElement("div");
+    row.style.cssText = "display:flex;align-items:center;margin:0.25rem 0;padding:0.25rem 0;";
+
+    const color = document.createElement("span");
+    color.style.cssText = `display:inline-block;width:1rem;height:1rem;margin:0 0.5rem 0 0;background:${t.color};`;
+    row.appendChild(color);
+
+    const name = document.createElement("span");
+    name.textContent = t.name;
+    name.style.cssText = "flex:1;margin:0 0.5rem 0 0;";
+    row.appendChild(name);
+
+    const editBtn = document.createElement("a");
+    editBtn.href = `event-type-form.html?id=${encodeURIComponent(t.id)}`;
+    editBtn.textContent = "Edit";
+    editBtn.style.cssText = "margin:0 0.5rem 0 0;padding:0.25rem 0.5rem;";
+    row.appendChild(editBtn);
+
+    const delBtn = document.createElement("button");
+    delBtn.textContent = "Delete";
+    delBtn.style.cssText = "padding:0.25rem 0.5rem;";
+    delBtn.addEventListener("click", () => deleteType(endpoint, t.id));
+    row.appendChild(delBtn);
+
+    contentEl.appendChild(row);
+  }
+}
+
+async function loadEventTypes() {
+  const endpoint = await getEndpoint();
+  if (!endpoint) return;
+  setStatus("Loading…");
+  try {
+    const res = await fetch(`${SERVER_URL}/event-types?endpoint=${encodeURIComponent(endpoint)}`);
+    if (!res.ok) throw new Error(`Server error: ${res.status}`);
+    const types = await res.json();
+    setStatus("");
+    renderTypes(types, endpoint);
+  } catch (err) {
+    setStatus(`❌ Error: ${err.message}`);
+  }
+}
+
 // On page load, check if the user is already subscribed
 async function checkExistingSubscription() {
   const subscription = await getExistingSubscription();
   if (subscription) {
     showSubscribed();
-    setStatus("✅ Sottoscrizione attiva.");
+    loadEventTypes();
   } else {
     showNotSubscribed();
   }
@@ -57,27 +128,27 @@ checkExistingSubscription();
 
 enableBtn.addEventListener("click", async () => {
   enableBtn.disabled = true;
-  setStatus("Richiesta permesso notifiche…");
+  setStatus("Requesting notification permission…");
 
   const permission = await Notification.requestPermission();
   if (permission !== "granted") {
-    setStatus("Permesso notifiche negato. Consenti le notifiche e riprova.");
+    setStatus("Notification permission denied. Allow notifications and try again.");
     enableBtn.disabled = false;
     return;
   }
 
   try {
-    setStatus("Registrazione service worker…");
+    setStatus("Registering service worker…");
     await navigator.serviceWorker.register("sw.js");
     const registration = await navigator.serviceWorker.ready;
 
-    setStatus("Recupero chiave VAPID dal server…");
+    setStatus("Fetching VAPID key from server…");
     const keyRes = await fetch(`${SERVER_URL}/vapid-key`);
     if (!keyRes.ok) throw new Error(`Server returned ${keyRes.status} for /vapid-key`);
     const { publicKey } = await keyRes.json();
     const applicationServerKey = urlBase64ToUint8Array(publicKey);
 
-    setStatus("Sottoscrizione alle notifiche push…");
+    setStatus("Subscribing to push notifications…");
     let subscription = await registration.pushManager.getSubscription();
     if (subscription) {
       await subscription.unsubscribe();
@@ -87,7 +158,7 @@ enableBtn.addEventListener("click", async () => {
       applicationServerKey,
     });
 
-    setStatus("Invio sottoscrizione al server…");
+    setStatus("Sending subscription to server…");
     const subRes = await fetch(`${SERVER_URL}/subscribe`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -96,27 +167,34 @@ enableBtn.addEventListener("click", async () => {
     if (!subRes.ok) throw new Error(`Server returned ${subRes.status} for /subscribe`);
 
     showSubscribed();
-    setStatus("✅ Sottoscrizione attiva.");
+    loadEventTypes();
   } catch (err) {
     console.error("Subscription failed:", err);
-    setStatus(`❌ Errore: ${err.message}`);
+    setStatus(`❌ Error: ${err.message}`);
     enableBtn.disabled = false;
   }
 });
 
 unsubscribeBtn.addEventListener("click", async () => {
+  if (!confirm("Are you sure you want to unsubscribe?")) return;
   unsubscribeBtn.disabled = true;
-  setStatus("Rimozione sottoscrizione…");
+  setStatus("Removing subscription…");
   try {
     const subscription = await getExistingSubscription();
     if (subscription) {
+      // Delete subscription data from the server
+      await fetch(`${SERVER_URL}/subscribe`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(subscription),
+      });
       await subscription.unsubscribe();
     }
     showNotSubscribed();
-    setStatus("Sottoscrizione rimossa.");
+    setStatus("Subscription removed.");
   } catch (err) {
     console.error("Unsubscribe failed:", err);
-    setStatus(`❌ Errore: ${err.message}`);
+    setStatus(`❌ Error: ${err.message}`);
     unsubscribeBtn.disabled = false;
   }
 });

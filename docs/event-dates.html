@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Yet Again — Date Eventi</title>
+  <title>Yet Again — Event Dates</title>
   <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#1a1a2e" />
 </head>
 <body style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;margin:0;">
-  <a href="index.html" style="margin:1rem 0 0 0;padding:0.25rem 0.5rem;">← Indietro</a>
-  <h1 style="margin:0 0 0.25rem 0;">Date Eventi</h1>
+  <a id="backLink" href="index.html" style="margin:1rem 0 0 0;padding:0.25rem 0.5rem;">← Back</a>
+  <h1 style="margin:0 0 0.25rem 0;">Event Dates</h1>
   <div id="status" style="margin:1rem 0;"></div>
   <div id="content" style="display:flex;flex-direction:column;align-items:center;"></div>
 
@@ -19,6 +19,12 @@
     const contentEl = document.getElementById("content");
 
     function setStatus(msg) { statusEl.textContent = msg; }
+
+    const params = new URLSearchParams(window.location.search);
+    const eventTypeId = params.get("eventTypeId");
+    if (eventTypeId) {
+      document.getElementById("backLink").href = `event-type-form.html?id=${encodeURIComponent(eventTypeId)}`;
+    }
 
     async function getEndpoint() {
       if (!("serviceWorker" in navigator) || !("PushManager" in window)) return null;
@@ -31,21 +37,21 @@
     async function load() {
       const endpoint = await getEndpoint();
       if (!endpoint) {
-        setStatus("Nessuna sottoscrizione trovata.");
+        setStatus("No subscription found.");
         return;
       }
-      setStatus("Caricamento tipologie…");
+      setStatus("Loading event types…");
       try {
         // First load event types so the user can pick one
         const typesRes = await fetch(`${SERVER_URL}/event-types?endpoint=${encodeURIComponent(endpoint)}`);
-        if (!typesRes.ok) throw new Error(`Errore server: ${typesRes.status}`);
+        if (!typesRes.ok) throw new Error(`Server error: ${typesRes.status}`);
         const types = await typesRes.json();
         if (types.length === 0) {
-          setStatus("Nessuna tipologia configurata. Crea prima una tipologia di evento.");
+          setStatus("No event types configured. Create an event type first.");
           return;
         }
         // For each type, load its dates
-        setStatus("Caricamento date…");
+        setStatus("Loading dates…");
         for (const t of types) {
           const datesRes = await fetch(`${SERVER_URL}/event-dates?endpoint=${encodeURIComponent(endpoint)}&eventTypeId=${encodeURIComponent(t.id)}`);
           if (!datesRes.ok) continue;
@@ -54,7 +60,7 @@
         setStatus("");
         // TODO: render types with their dates
       } catch (err) {
-        setStatus(`❌ Errore: ${err.message}`);
+        setStatus(`❌ Error: ${err.message}`);
       }
     }
 

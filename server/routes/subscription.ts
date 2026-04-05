@@ -53,5 +53,38 @@ export async function handleSubscription(
     }
   }
 
+  // DELETE /subscribe — remove a push subscription
+  if (req.method === "DELETE" && url.pathname === "/subscribe") {
+    try {
+      const body = await req.json();
+      if (
+        typeof body !== "object" ||
+        body === null ||
+        !("endpoint" in body) ||
+        typeof (body as PushSubscriptionLike).endpoint !== "string"
+      ) {
+        return new Response(
+          JSON.stringify({ error: "Invalid payload, endpoint required" }),
+          { status: 400, headers: { ...cors, "Content-Type": "application/json" } },
+        );
+      }
+
+      const { endpoint } = body as PushSubscriptionLike;
+      await kv.delete(["subscriptions", endpoint]);
+      console.log(`Subscription deleted from KV: ${endpoint}`);
+
+      return new Response(
+        JSON.stringify({ ok: true }),
+        { status: 200, headers: { ...cors, "Content-Type": "application/json" } },
+      );
+    } catch (err) {
+      console.error("Failed to delete subscription:", err);
+      return new Response(
+        JSON.stringify({ error: "Invalid JSON body" }),
+        { status: 400, headers: { ...cors, "Content-Type": "application/json" } },
+      );
+    }
+  }
+
   return null;
 }

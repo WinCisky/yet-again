@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Yet Again — Tipologie di Evento</title>
+  <title>Yet Again — Event Types</title>
   <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#1a1a2e" />
 </head>
 <body style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;margin:0;">
-  <a href="index.html" style="margin:1rem 0 0 0;padding:0.25rem 0.5rem;">← Indietro</a>
-  <h1 style="margin:1rem 0 0.25rem 0;">Tipologie di Evento</h1>
-  <a href="event-type-form.html" style="margin:1rem 0 0 0;padding:0.25rem 0.5rem;">+ Nuova Tipologia</a>
+  <a href="index.html" style="margin:1rem 0 0 0;padding:0.25rem 0.5rem;">← Back</a>
+  <h1 style="margin:1rem 0 0.25rem 0;">Event Types</h1>
+  <a href="event-type-form.html" style="margin:1rem 0 0 0;padding:0.25rem 0.5rem;">+ New Type</a>
   <div id="status" style="margin:1rem 0;"></div>
   <div id="content" style="display:flex;flex-direction:column;align-items:stretch;"></div>
 
@@ -30,17 +30,17 @@
     }
 
     async function deleteType(endpoint, id) {
-      if (!confirm("Eliminare questa tipologia?")) return;
+      if (!confirm("Delete this event type?")) return;
       try {
         const res = await fetch(`${SERVER_URL}/event-types`, {
           method: "DELETE",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ endpoint, id }),
         });
-        if (!res.ok) throw new Error(`Errore server: ${res.status}`);
+        if (!res.ok) throw new Error(`Server error: ${res.status}`);
         load();
       } catch (err) {
-        setStatus(`❌ Errore: ${err.message}`);
+        setStatus(`❌ Error: ${err.message}`);
       }
     }
 
@@ -61,12 +61,12 @@
 
         const editBtn = document.createElement("a");
         editBtn.href = `event-type-form.html?id=${encodeURIComponent(t.id)}`;
-        editBtn.textContent = "Modifica";
+        editBtn.textContent = "Edit";
         editBtn.style.cssText = "margin:0 0.5rem 0 0;padding:0.25rem 0.5rem;";
         row.appendChild(editBtn);
 
         const delBtn = document.createElement("button");
-        delBtn.textContent = "Elimina";
+        delBtn.textContent = "Delete";
         delBtn.style.cssText = "padding:0.25rem 0.5rem;";
         delBtn.addEventListener("click", () => deleteType(endpoint, t.id));
         row.appendChild(delBtn);
@@ -78,23 +78,23 @@
     async function load() {
       const endpoint = await getEndpoint();
       if (!endpoint) {
-        setStatus("Nessuna sottoscrizione trovata.");
+        setStatus("No subscription found.");
         return;
       }
-      setStatus("Caricamento…");
+      setStatus("Loading…");
       try {
         const res = await fetch(`${SERVER_URL}/event-types?endpoint=${encodeURIComponent(endpoint)}`);
-        if (!res.ok) throw new Error(`Errore server: ${res.status}`);
+        if (!res.ok) throw new Error(`Server error: ${res.status}`);
         const types = await res.json();
         setStatus("");
         if (types.length === 0) {
-          setStatus("Nessuna tipologia configurata.");
+          setStatus("No event types configured.");
           contentEl.innerHTML = "";
           return;
         }
         renderTypes(types, endpoint);
       } catch (err) {
-        setStatus(`❌ Errore: ${err.message}`);
+        setStatus(`❌ Error: ${err.message}`);
       }
     }
 

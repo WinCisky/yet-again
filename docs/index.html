@@ -16,13 +16,16 @@
   </div>
 
   <div id="subscribed" style="display:none;flex-direction:column;align-items:center;">
-    <a href="event-types.html" style="margin:1rem 0 0 0;padding:0.25rem 0.5rem;display:flex;align-items:center;justify-content:center;">Tipologie di Evento</a>
-    <a href="event-dates.html" style="margin:0.5rem 0 0 0;padding:0.25rem 0.5rem;display:flex;align-items:center;justify-content:center;">Date Eventi</a>
-    <a href="event-times.html" style="margin:0.5rem 0 0 0;padding:0.25rem 0.5rem;display:flex;align-items:center;justify-content:center;">Orari Eventi</a>
-    <button id="unsubscribeBtn" style="margin:1.5rem 0 0 0;padding:0.25rem 0.5rem;">Disiscriviti</button>
+    <div style="display:flex;gap:0.5rem;margin:1rem 0 0 0;">
+      <button id="unsubscribeBtn" style="padding:0.25rem 0.5rem;">Unsubscribe</button>
+      <a href="event-type-form.html" style="padding:0.25rem 0.5rem;">+ New Type</a>
+    </div>
+    <div id="content" style="display:flex;flex-direction:column;align-items:stretch;margin:1rem 0 0 0;"></div>
   </div>
 
   <div id="status" style="margin:1rem 0 0 0;"></div>
+
+  <p style="margin-top:2rem;font-size:0.85rem;"><a href="privacy.html">Privacy Policy</a></p>
 
   <script src="app.js"></script>
 </body>
