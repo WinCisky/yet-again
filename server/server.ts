@@ -1,7 +1,9 @@
 import webpush from "npm:web-push@3";
 import { corsHeaders } from "./helper.ts";
 import { EventTime, EventType, PushSubscriptionLike } from "./types.ts";
-import { handleEvents } from "./routes/events.ts";
+import { handleEventTypes } from "./routes/event-types.ts";
+import { handleEventDates } from "./routes/event-dates.ts";
+import { handleEventTimes } from "./routes/event-times.ts";
 import { handleSubscription } from "./routes/subscription.ts";
 
 const VAPID_PUBLIC_KEY = Deno.env.get("VAPID_PUBLIC_KEY") ?? "";
@@ -37,9 +39,17 @@ async function handler(req: Request): Promise<Response> {
   const subResponse = await handleSubscription(req, url, cors, kv, VAPID_PUBLIC_KEY);
   if (subResponse) return subResponse;
 
-  // Event routes (event-types, event-dates, event-times)
-  const evtResponse = await handleEvents(req, url, cors, kv);
-  if (evtResponse) return evtResponse;
+  // Event type routes
+  const typeResponse = await handleEventTypes(req, url, cors, kv);
+  if (typeResponse) return typeResponse;
+
+  // Event date routes
+  const dateResponse = await handleEventDates(req, url, cors, kv);
+  if (dateResponse) return dateResponse;
+
+  // Event time routes
+  const timeResponse = await handleEventTimes(req, url, cors, kv);
+  if (timeResponse) return timeResponse;
 
   // 404 for everything else
   return new Response("Not Found", { status: 404, headers: cors });

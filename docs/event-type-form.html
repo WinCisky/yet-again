@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Yet Again — Nuova Tipologia</title>
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#1a1a2e" />
+</head>
+<body style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;margin:0;">
+  <a href="event-types.html" style="margin:1rem 0 0 0;padding:0.25rem 0.5rem;">← Indietro</a>
+  <h1 id="pageTitle" style="margin:1rem 0 0.25rem 0;">Nuova Tipologia</h1>
+  <div id="status" style="margin:1rem 0;"></div>
+
+  <form id="form" style="display:flex;flex-direction:column;align-items:center;">
+    <label style="margin:0.5rem 0 0.25rem 0;">Nome</label>
+    <input id="nameInput" type="text" required style="padding:0.25rem 0.5rem;" />
+
+    <label style="margin:0.5rem 0 0.25rem 0;">Colore</label>
+    <input id="colorInput" type="color" value="#e94560" required />
+
+    <button type="submit" id="submitBtn" style="margin:1rem 0 0 0;padding:0.25rem 0.5rem;">Crea</button>
+  </form>
+
+  <script>
+    const SERVER_URL = "https://yet-again.simo.deno.net";
+    const statusEl = document.getElementById("status");
+    const form = document.getElementById("form");
+    const nameInput = document.getElementById("nameInput");
+    const colorInput = document.getElementById("colorInput");
+    const submitBtn = document.getElementById("submitBtn");
+    const pageTitle = document.getElementById("pageTitle");
+
+    function setStatus(msg) { statusEl.textContent = msg; }
+
+    async function getEndpoint() {
+      if (!("serviceWorker" in navigator) || !("PushManager" in window)) return null;
+      const reg = await navigator.serviceWorker.getRegistration("sw.js");
+      if (!reg) return null;
+      const sub = await reg.pushManager.getSubscription();
+      return sub ? sub.endpoint : null;
+    }
+
+    // Check if we are editing an existing event type (id passed via query string)
+    const params = new URLSearchParams(window.location.search);
+    const editId = params.get("id");
+
+    async function loadExisting() {
+      if (!editId) return;
+      pageTitle.textContent = "Modifica Tipologia";
+      submitBtn.textContent = "Salva";
+      const endpoint = await getEndpoint();
+      if (!endpoint) { setStatus("Nessuna sottoscrizione trovata."); return; }
+      setStatus("Caricamento…");
+      try {
+        const res = await fetch(`${SERVER_URL}/event-types?endpoint=${encodeURIComponent(endpoint)}`);
+        if (!res.ok) throw new Error(`Errore server: ${res.status}`);
+        const types = await res.json();
+        const existing = types.find(t => t.id === editId);
+        if (!existing) { setStatus("Tipologia non trovata."); return; }
+        nameInput.value = existing.name;
+        colorInput.value = existing.color;
+        setStatus("");
+      } catch (err) {
+        setStatus(`❌ Errore: ${err.message}`);
+      }
+    }
+
+    loadExisting();
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const name = nameInput.value.trim();
+      const color = colorInput.value;
+
+      if (!name) { setStatus("Inserisci un nome."); return; }
+      if (!color) { setStatus("Seleziona un colore."); return; }
+
+      const endpoint = await getEndpoint();
+      if (!endpoint) { setStatus("Nessuna sottoscrizione trovata."); return; }
+
+      submitBtn.disabled = true;
+      setStatus("Salvataggio…");
+
+      try {
+        const method = editId ? "PUT" : "POST";
+        const body = editId
+          ? { endpoint, id: editId, name, color }
+          : { endpoint, name, color };
+
+        const res = await fetch(`${SERVER_URL}/event-types`, {
+          method,
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.error || `Errore server: ${res.status}`);
+        }
+        window.location.href = "event-types.html";
+      } catch (err) {
+        setStatus(`❌ Errore: ${err.message}`);
+        submitBtn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
