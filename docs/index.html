@@ -6,42 +6,24 @@
   <title>Yet Again — Push Notifications</title>
   <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#1a1a2e" />
-  <style>
-    body {
-      font-family: system-ui, sans-serif;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-      margin: 0;
-      background: #1a1a2e;
-      color: #eee;
-    }
-    h1 { margin-bottom: 0.25rem; }
-    p  { margin: 0.5rem 0; color: #aaa; }
-    button {
-      margin-top: 1.5rem;
-      padding: 0.75rem 2rem;
-      font-size: 1rem;
-      border: none;
-      border-radius: 8px;
-      background: #e94560;
-      color: #fff;
-      cursor: pointer;
-    }
-    button:disabled { background: #555; cursor: not-allowed; }
-    #status { margin-top: 1rem; font-size: 0.9rem; min-height: 1.2em; }
-  </style>
 </head>
-<body>
-  <h1>Yet Again</h1>
-  <p>Scheduled push notification demo</p>
+<body style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;margin:0;">
+  <h1 style="margin:0 0 0.25rem 0;">Yet Again</h1>
+  <p style="margin:0.5rem 0;">Scheduled push notification demo</p>
 
-  <button id="enableBtn">Enable Notifications</button>
-  <div id="status"></div>
+  <div id="notSubscribed" style="display:none;flex-direction:column;align-items:center;">
+    <button id="enableBtn" style="margin:1.5rem 0 0 0;padding:0.75rem 2rem;">Enable Notifications</button>
+  </div>
 
-  <!-- app.js handles all subscription logic -->
+  <div id="subscribed" style="display:none;flex-direction:column;align-items:center;">
+    <a href="event-types.html" style="margin:1rem 0 0 0;padding:0.75rem 2rem;display:flex;align-items:center;justify-content:center;">Tipologie di Evento</a>
+    <a href="event-dates.html" style="margin:0.5rem 0 0 0;padding:0.75rem 2rem;display:flex;align-items:center;justify-content:center;">Date Eventi</a>
+    <a href="event-times.html" style="margin:0.5rem 0 0 0;padding:0.75rem 2rem;display:flex;align-items:center;justify-content:center;">Orari Eventi</a>
+    <button id="unsubscribeBtn" style="margin:1.5rem 0 0 0;padding:0.75rem 2rem;">Disiscriviti</button>
+  </div>
+
+  <div id="status" style="margin:1rem 0 0 0;"></div>
+
   <script src="app.js"></script>
 </body>
 </html>

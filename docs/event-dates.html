@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Yet Again — Date Eventi</title>
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#1a1a2e" />
+</head>
+<body style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;margin:0;">
+  <a href="index.html" style="align-self:flex-start;margin:1rem;padding:0.5rem 1rem;">← Indietro</a>
+  <h1 style="margin:0 0 0.25rem 0;">Date Eventi</h1>
+  <div id="status" style="margin:1rem 0;"></div>
+  <div id="content" style="display:flex;flex-direction:column;align-items:center;"></div>
+
+  <script>
+    const SERVER_URL = "https://yet-again.simo.deno.net";
+    const statusEl = document.getElementById("status");
+    const contentEl = document.getElementById("content");
+
+    function setStatus(msg) { statusEl.textContent = msg; }
+
+    async function getEndpoint() {
+      if (!("serviceWorker" in navigator) || !("PushManager" in window)) return null;
+      const reg = await navigator.serviceWorker.getRegistration("sw.js");
+      if (!reg) return null;
+      const sub = await reg.pushManager.getSubscription();
+      return sub ? sub.endpoint : null;
+    }
+
+    async function load() {
+      const endpoint = await getEndpoint();
+      if (!endpoint) {
+        setStatus("Nessuna sottoscrizione trovata.");
+        return;
+      }
+      setStatus("Caricamento tipologie…");
+      try {
+        // First load event types so the user can pick one
+        const typesRes = await fetch(`${SERVER_URL}/event-types?endpoint=${encodeURIComponent(endpoint)}`);
+        if (!typesRes.ok) throw new Error(`Errore server: ${typesRes.status}`);
+        const types = await typesRes.json();
+        if (types.length === 0) {
+          setStatus("Nessuna tipologia configurata. Crea prima una tipologia di evento.");
+          return;
+        }
+        // For each type, load its dates
+        setStatus("Caricamento date…");
+        for (const t of types) {
+          const datesRes = await fetch(`${SERVER_URL}/event-dates?endpoint=${encodeURIComponent(endpoint)}&eventTypeId=${encodeURIComponent(t.id)}`);
+          if (!datesRes.ok) continue;
+          t.dates = await datesRes.json();
+        }
+        setStatus("");
+        // TODO: render types with their dates
+      } catch (err) {
+        setStatus(`❌ Errore: ${err.message}`);
+      }
+    }
+
+    load();
+  </script>
+</body>
+</html>

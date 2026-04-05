@@ -1,21 +1,24 @@
-/**
- * app.js — client-side push subscription logic
- *
- * On button click:
- *  1. Request notification permission from the browser
- *  2. Register the service worker (sw.js)
- *  3. Fetch the VAPID public key from the server
- *  4. Subscribe to Web Push via PushManager
- *  5. Send the subscription object to the server's /subscribe endpoint
- */
-
 const SERVER_URL = "https://yet-again.simo.deno.net";
 
-const btn = document.getElementById("enableBtn");
+const enableBtn = document.getElementById("enableBtn");
+const unsubscribeBtn = document.getElementById("unsubscribeBtn");
+const notSubscribedDiv = document.getElementById("notSubscribed");
+const subscribedDiv = document.getElementById("subscribed");
 const statusEl = document.getElementById("status");
 
 function setStatus(msg) {
   statusEl.textContent = msg;
+}
+
+function showSubscribed() {
+  notSubscribedDiv.style.display = "none";
+  subscribedDiv.style.display = "flex";
+}
+
+function showNotSubscribed() {
+  subscribedDiv.style.display = "none";
+  notSubscribedDiv.style.display = "flex";
+  enableBtn.disabled = false;
 }
 
 /**
@@ -29,46 +32,62 @@ function urlBase64ToUint8Array(base64String) {
   return Uint8Array.from([...rawData].map((c) => c.charCodeAt(0)));
 }
 
-btn.addEventListener("click", async () => {
-  btn.disabled = true;
-  setStatus("Requesting notification permission…");
+/**
+ * Return the current PushSubscription if any, or null.
+ */
+async function getExistingSubscription() {
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) return null;
+  const registration = await navigator.serviceWorker.getRegistration("sw.js");
+  if (!registration) return null;
+  return await registration.pushManager.getSubscription();
+}
 
-  // Step 1: Ask the user for notification permission
+// On page load, check if the user is already subscribed
+async function checkExistingSubscription() {
+  const subscription = await getExistingSubscription();
+  if (subscription) {
+    showSubscribed();
+    setStatus("✅ Sottoscrizione attiva.");
+  } else {
+    showNotSubscribed();
+  }
+}
+
+checkExistingSubscription();
+
+enableBtn.addEventListener("click", async () => {
+  enableBtn.disabled = true;
+  setStatus("Richiesta permesso notifiche…");
+
   const permission = await Notification.requestPermission();
   if (permission !== "granted") {
-    setStatus("Notification permission denied. Please allow notifications and try again.");
-    btn.disabled = false;
+    setStatus("Permesso notifiche negato. Consenti le notifiche e riprova.");
+    enableBtn.disabled = false;
     return;
   }
 
   try {
-    // Step 2: Register the service worker
-    setStatus("Registering service worker…");
+    setStatus("Registrazione service worker…");
     await navigator.serviceWorker.register("sw.js");
-    // Wait for the service worker to be ready before subscribing
     const registration = await navigator.serviceWorker.ready;
 
-    // Step 3: Fetch the VAPID public key from the server
-    setStatus("Fetching VAPID key from server…");
+    setStatus("Recupero chiave VAPID dal server…");
     const keyRes = await fetch(`${SERVER_URL}/vapid-key`);
     if (!keyRes.ok) throw new Error(`Server returned ${keyRes.status} for /vapid-key`);
     const { publicKey } = await keyRes.json();
     const applicationServerKey = urlBase64ToUint8Array(publicKey);
 
-    // Step 4: Check for existing subscription and subscribe
-    setStatus("Subscribing to push notifications…");
+    setStatus("Sottoscrizione alle notifiche push…");
     let subscription = await registration.pushManager.getSubscription();
     if (subscription) {
-      // Unsubscribe old subscription to avoid key conflicts
       await subscription.unsubscribe();
     }
     subscription = await registration.pushManager.subscribe({
-      userVisibleOnly: true, // required: all pushes must show a notification
+      userVisibleOnly: true,
       applicationServerKey,
     });
 
-    // Step 5: Send the subscription to the server so it can push to us later
-    setStatus("Sending subscription to server…");
+    setStatus("Invio sottoscrizione al server…");
     const subRes = await fetch(`${SERVER_URL}/subscribe`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -76,11 +95,28 @@ btn.addEventListener("click", async () => {
     });
     if (!subRes.ok) throw new Error(`Server returned ${subRes.status} for /subscribe`);
 
-    setStatus("✅ Subscribed! You will receive notifications at the scheduled times.");
-    btn.textContent = "Subscribed";
+    showSubscribed();
+    setStatus("✅ Sottoscrizione attiva.");
   } catch (err) {
     console.error("Subscription failed:", err);
-    setStatus(`❌ Error: ${err.message}`);
-    btn.disabled = false;
+    setStatus(`❌ Errore: ${err.message}`);
+    enableBtn.disabled = false;
+  }
+});
+
+unsubscribeBtn.addEventListener("click", async () => {
+  unsubscribeBtn.disabled = true;
+  setStatus("Rimozione sottoscrizione…");
+  try {
+    const subscription = await getExistingSubscription();
+    if (subscription) {
+      await subscription.unsubscribe();
+    }
+    showNotSubscribed();
+    setStatus("Sottoscrizione rimossa.");
+  } catch (err) {
+    console.error("Unsubscribe failed:", err);
+    setStatus(`❌ Errore: ${err.message}`);
+    unsubscribeBtn.disabled = false;
   }
 });
