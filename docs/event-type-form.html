@@ -7,24 +7,24 @@
   <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#1a1a2e" />
 </head>
-<body style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;margin:0;">
-  <a href="index.html" style="margin:1rem 0 0 0;padding:0.25rem 0.5rem;">← Back</a>
-  <h1 id="pageTitle" style="margin:1rem 0 0.25rem 0;">New Event Type</h1>
-  <div id="status" style="margin:1rem 0;"></div>
+<body style="display:flex;flex-direction:column;align-items:center;">
+  <a href="index.html">← Back</a>
+  <h1 id="pageTitle">New Event Type</h1>
+  <div id="status"></div>
 
   <form id="form" style="display:flex;flex-direction:column;align-items:center;">
-    <label style="margin:0.5rem 0 0.25rem 0;">Name</label>
-    <input id="nameInput" type="text" required style="padding:0.25rem 0.5rem;" />
+    <label>Name</label>
+    <input id="nameInput" type="text" required />
 
-    <label style="margin:0.5rem 0 0.25rem 0;">Color</label>
+    <label>Color</label>
     <input id="colorInput" type="color" value="#e94560" required />
 
-    <button type="submit" id="submitBtn" style="margin:1rem 0 0 0;padding:0.25rem 0.5rem;">Create</button>
+    <button type="submit" id="submitBtn">Create</button>
   </form>
 
-  <div id="editLinks" style="display:none;flex-direction:column;align-items:center;margin:1rem 0 0 0;">
-    <a id="timesLink" href="#" style="margin:0.5rem 0 0 0;padding:0.25rem 0.5rem;">Notification Times</a>
-    <a id="datesLink" href="#" style="margin:0.5rem 0 0 0;padding:0.25rem 0.5rem;">Event Dates</a>
+  <div id="editLinks" style="display:none;flex-direction:column;align-items:center;">
+    <a id="timesLink" href="#">Notification Times</a>
+    <a id="datesLink" href="#">Event Dates</a>
   </div>
 
   <script>

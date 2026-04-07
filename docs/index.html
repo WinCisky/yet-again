@@ -7,25 +7,25 @@
   <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#1a1a2e" />
 </head>
-<body style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;margin:0;">
-  <h1 style="margin:0 0 0.25rem 0;">Yet Again</h1>
-  <p style="margin:0.5rem 0;">Scheduled push notification demo</p>
+<body style="display:flex;flex-direction:column;align-items:center;">
+  <h1>Yet Again</h1>
+  <p>Scheduled push notification demo</p>
 
   <div id="notSubscribed" style="display:none;flex-direction:column;align-items:center;">
-    <button id="enableBtn" style="margin:1.5rem 0 0 0;padding:0.25rem 0.5rem;">Enable Notifications</button>
+    <button id="enableBtn">Enable Notifications</button>
   </div>
 
   <div id="subscribed" style="display:none;flex-direction:column;align-items:center;">
-    <div style="display:flex;gap:0.5rem;margin:1rem 0 0 0;">
-      <button id="unsubscribeBtn" style="padding:0.25rem 0.5rem;">Unsubscribe</button>
-      <a href="event-type-form.html" style="padding:0.25rem 0.5rem;">+ New Type</a>
+    <div style="display:flex;gap:0.5rem;">
+      <button id="unsubscribeBtn">Unsubscribe</button>
+      <a href="event-type-form.html">+ New Type</a>
     </div>
-    <div id="content" style="display:flex;flex-direction:column;align-items:stretch;margin:1rem 0 0 0;"></div>
+    <div id="content" style="display:flex;flex-direction:column;align-items:stretch;"></div>
   </div>
 
-  <div id="status" style="margin:1rem 0 0 0;"></div>
+  <div id="status"></div>
 
-  <p style="margin-top:2rem;font-size:0.85rem;"><a href="privacy.html">Privacy Policy</a></p>
+  <p><a href="privacy.html">Privacy Policy</a></p>
 
   <script src="app.js"></script>
 </body>

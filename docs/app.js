@@ -71,26 +71,25 @@ function renderTypes(types, endpoint) {
   }
   for (const t of types) {
     const row = document.createElement("div");
-    row.style.cssText = "display:flex;align-items:center;margin:0.25rem 0;padding:0.25rem 0;";
+    row.style.cssText = "display:flex;align-items:center;gap:0.5rem;";
 
     const color = document.createElement("span");
-    color.style.cssText = `display:inline-block;width:1rem;height:1rem;margin:0 0.5rem 0 0;background:${t.color};`;
+    color.textContent = "\u25CF";
+    color.style.color = t.color;
     row.appendChild(color);
 
     const name = document.createElement("span");
     name.textContent = t.name;
-    name.style.cssText = "flex:1;margin:0 0.5rem 0 0;";
+    name.style.cssText = "flex:1;";
     row.appendChild(name);
 
     const editBtn = document.createElement("a");
     editBtn.href = `event-type-form.html?id=${encodeURIComponent(t.id)}`;
     editBtn.textContent = "Edit";
-    editBtn.style.cssText = "margin:0 0.5rem 0 0;padding:0.25rem 0.5rem;";
     row.appendChild(editBtn);
 
     const delBtn = document.createElement("button");
-    delBtn.textContent = "Delete";
-    delBtn.style.cssText = "padding:0.25rem 0.5rem;";
+    delBtn.textContent = "Delete";;
     delBtn.addEventListener("click", () => deleteType(endpoint, t.id));
     row.appendChild(delBtn);
 

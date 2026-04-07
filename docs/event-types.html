@@ -7,11 +7,11 @@
   <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#1a1a2e" />
 </head>
-<body style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;margin:0;">
-  <a href="index.html" style="margin:1rem 0 0 0;padding:0.25rem 0.5rem;">← Back</a>
-  <h1 style="margin:1rem 0 0.25rem 0;">Event Types</h1>
-  <a href="event-type-form.html" style="margin:1rem 0 0 0;padding:0.25rem 0.5rem;">+ New Type</a>
-  <div id="status" style="margin:1rem 0;"></div>
+<body style="display:flex;flex-direction:column;align-items:center;">
+  <a href="index.html">← Back</a>
+  <h1>Event Types</h1>
+  <a href="event-type-form.html">+ New Type</a>
+  <div id="status"></div>
   <div id="content" style="display:flex;flex-direction:column;align-items:stretch;"></div>
 
   <script>
@@ -48,26 +48,25 @@
       contentEl.innerHTML = "";
       for (const t of types) {
         const row = document.createElement("div");
-        row.style.cssText = "display:flex;align-items:center;margin:0.5rem 0;padding:0.25rem 0;";
+        row.style.cssText = "display:flex;align-items:center;gap:0.5rem;";
 
         const color = document.createElement("span");
-        color.style.cssText = `display:inline-block;width:1rem;height:1rem;margin:0 0.5rem 0 0;background:${t.color};`;
+        color.textContent = "\u25CF";
+        color.style.color = t.color;
         row.appendChild(color);
 
         const name = document.createElement("span");
         name.textContent = t.name;
-        name.style.cssText = "flex:1;margin:0 0.5rem 0 0;";
+        name.style.cssText = "flex:1;";
         row.appendChild(name);
 
         const editBtn = document.createElement("a");
         editBtn.href = `event-type-form.html?id=${encodeURIComponent(t.id)}`;
         editBtn.textContent = "Edit";
-        editBtn.style.cssText = "margin:0 0.5rem 0 0;padding:0.25rem 0.5rem;";
         row.appendChild(editBtn);
 
         const delBtn = document.createElement("button");
         delBtn.textContent = "Delete";
-        delBtn.style.cssText = "padding:0.25rem 0.5rem;";
         delBtn.addEventListener("click", () => deleteType(endpoint, t.id));
         row.appendChild(delBtn);
 
