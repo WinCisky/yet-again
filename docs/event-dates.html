@@ -1,70 +1,75 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Yet Again — Event Dates</title>
-  <link rel="manifest" href="manifest.json" />
-  <meta name="theme-color" content="#1a1a2e" />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Yet Again — Event Dates</title>
+    <link rel="manifest" href="manifest.json" />
+    <link rel="stylesheet" href="style.css" />
+    <meta name="theme-color" content="#1a1a2e" />
 </head>
-<body style="display:flex;flex-direction:column;align-items:center;">
-  <a id="backLink" href="index.html">← Back</a>
-  <h1>Event Dates</h1>
-  <div id="status"></div>
-  <div id="content" style="display:flex;flex-direction:column;align-items:center;"></div>
 
-  <script>
-    const SERVER_URL = "https://yet-again.simo.deno.net";
-    const statusEl = document.getElementById("status");
-    const contentEl = document.getElementById("content");
+<body class="flex flex-col items-center">
+    <a id="backLink" href="index.html">← Back</a>
+    <h1>Event Dates</h1>
+    <div id="status"></div>
+    <div id="content" class="flex flex-col items-center"></div>
 
-    function setStatus(msg) { statusEl.textContent = msg; }
+    <script type="module">
+        import { SERVER_URL } from "./js/global.js";
 
-    const params = new URLSearchParams(window.location.search);
-    const eventTypeId = params.get("eventTypeId");
-    if (eventTypeId) {
-      document.getElementById("backLink").href = `event-type-form.html?id=${encodeURIComponent(eventTypeId)}`;
-    }
+        const statusEl = document.getElementById("status");
+        const contentEl = document.getElementById("content");
 
-    async function getEndpoint() {
-      if (!("serviceWorker" in navigator) || !("PushManager" in window)) return null;
-      const reg = await navigator.serviceWorker.getRegistration("sw.js");
-      if (!reg) return null;
-      const sub = await reg.pushManager.getSubscription();
-      return sub ? sub.endpoint : null;
-    }
+        function setStatus(msg) { statusEl.textContent = msg; }
 
-    async function load() {
-      const endpoint = await getEndpoint();
-      if (!endpoint) {
-        setStatus("No subscription found.");
-        return;
-      }
-      setStatus("Loading event types…");
-      try {
-        // First load event types so the user can pick one
-        const typesRes = await fetch(`${SERVER_URL}/event-types?endpoint=${encodeURIComponent(endpoint)}`);
-        if (!typesRes.ok) throw new Error(`Server error: ${typesRes.status}`);
-        const types = await typesRes.json();
-        if (types.length === 0) {
-          setStatus("No event types configured. Create an event type first.");
-          return;
+        const params = new URLSearchParams(window.location.search);
+        const eventTypeId = params.get("eventTypeId");
+        if (eventTypeId) {
+            document.getElementById("backLink").href = `event-type-form.html?id=${encodeURIComponent(eventTypeId)}`;
         }
-        // For each type, load its dates
-        setStatus("Loading dates…");
-        for (const t of types) {
-          const datesRes = await fetch(`${SERVER_URL}/event-dates?endpoint=${encodeURIComponent(endpoint)}&eventTypeId=${encodeURIComponent(t.id)}`);
-          if (!datesRes.ok) continue;
-          t.dates = await datesRes.json();
-        }
-        setStatus("");
-        // TODO: render types with their dates
-      } catch (err) {
-        setStatus(`❌ Error: ${err.message}`);
-      }
-    }
 
-    load();
-  </script>
+        async function getEndpoint() {
+            if (!("serviceWorker" in navigator) || !("PushManager" in window)) return null;
+            const reg = await navigator.serviceWorker.getRegistration("sw.js");
+            if (!reg) return null;
+            const sub = await reg.pushManager.getSubscription();
+            return sub ? sub.endpoint : null;
+        }
+
+        async function load() {
+            const endpoint = await getEndpoint();
+            if (!endpoint) {
+                setStatus("No subscription found.");
+                return;
+            }
+            setStatus("Loading event types…");
+            try {
+                // First load event types so the user can pick one
+                const typesRes = await fetch(`${SERVER_URL}/event-types?endpoint=${encodeURIComponent(endpoint)}`);
+                if (!typesRes.ok) throw new Error(`Server error: ${typesRes.status}`);
+                const types = await typesRes.json();
+                if (types.length === 0) {
+                    setStatus("No event types configured. Create an event type first.");
+                    return;
+                }
+                // For each type, load its dates
+                setStatus("Loading dates…");
+                for (const t of types) {
+                    const datesRes = await fetch(`${SERVER_URL}/event-dates?endpoint=${encodeURIComponent(endpoint)}&eventTypeId=${encodeURIComponent(t.id)}`);
+                    if (!datesRes.ok) continue;
+                    t.dates = await datesRes.json();
+                }
+                setStatus("");
+                // TODO: render types with their dates
+            } catch (err) {
+                setStatus(`❌ Error: ${err.message}`);
+            }
+        }
+
+        load();
+    </script>
 </body>
+
 </html>

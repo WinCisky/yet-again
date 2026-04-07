@@ -1,120 +1,130 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Yet Again — New Event Type</title>
-  <link rel="manifest" href="manifest.json" />
-  <meta name="theme-color" content="#1a1a2e" />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Yet Again — New Event Type</title>
+    <link rel="manifest" href="manifest.json" />
+    <link rel="stylesheet" href="style.css" />
+    <meta name="theme-color" content="#1a1a2e" />
 </head>
-<body style="display:flex;flex-direction:column;align-items:center;">
-  <a href="index.html">← Back</a>
-  <h1 id="pageTitle">New Event Type</h1>
-  <div id="status"></div>
 
-  <form id="form" style="display:flex;flex-direction:column;align-items:center;">
-    <label>Name</label>
-    <input id="nameInput" type="text" required />
+<body class="flex flex-col items-center">
+    <a href="index.html">← Back</a>
+    <h1 id="pageTitle">New Event Type</h1>
+    <div id="status"></div>
 
-    <label>Color</label>
-    <input id="colorInput" type="color" value="#e94560" required />
+    <form id="form" class="flex flex-col items-start align-center gap-2">
+        <div class="flex flex-wrap gap-2 items-center">
+            <label>Name</label>
+            <input id="nameInput" type="text" required />
+        </div>
 
-    <button type="submit" id="submitBtn">Create</button>
-  </form>
+        <div class="flex flex-wrap gap-2 items-center">
+            <label>Color</label>
+            <input id="colorInput" type="color" value="#e94560" required />
+        </div>
 
-  <div id="editLinks" style="display:none;flex-direction:column;align-items:center;">
-    <a id="timesLink" href="#">Notification Times</a>
-    <a id="datesLink" href="#">Event Dates</a>
-  </div>
+        <button type="submit" id="submitBtn">Create</button>
+    </form>
 
-  <script>
-    const SERVER_URL = "https://yet-again.simo.deno.net";
-    const statusEl = document.getElementById("status");
-    const form = document.getElementById("form");
-    const nameInput = document.getElementById("nameInput");
-    const colorInput = document.getElementById("colorInput");
-    const submitBtn = document.getElementById("submitBtn");
-    const pageTitle = document.getElementById("pageTitle");
+    <div id="editLinks" class="flex flex-col items-center hidden p-2 gap-2">
+        <a id="timesLink" href="#">Notification Times</a>
+        <a id="datesLink" href="#">Event Dates</a>
+    </div>
 
-    function setStatus(msg) { statusEl.textContent = msg; }
+    <script type="module">
+        import { SERVER_URL } from "./js/global.js";
 
-    async function getEndpoint() {
-      if (!("serviceWorker" in navigator) || !("PushManager" in window)) return null;
-      const reg = await navigator.serviceWorker.getRegistration("sw.js");
-      if (!reg) return null;
-      const sub = await reg.pushManager.getSubscription();
-      return sub ? sub.endpoint : null;
-    }
+        const statusEl = document.getElementById("status");
+        const form = document.getElementById("form");
+        const nameInput = document.getElementById("nameInput");
+        const colorInput = document.getElementById("colorInput");
+        const submitBtn = document.getElementById("submitBtn");
+        const pageTitle = document.getElementById("pageTitle");
 
-    // Check if we are editing an existing event type (id passed via query string)
-    const params = new URLSearchParams(window.location.search);
-    const editId = params.get("id");
+        function setStatus(msg) { statusEl.textContent = msg; }
 
-    const editLinksDiv = document.getElementById("editLinks");
-    const timesLink = document.getElementById("timesLink");
-    const datesLink = document.getElementById("datesLink");
-
-    async function loadExisting() {
-      if (!editId) return;
-      pageTitle.textContent = "Edit Event Type";
-      submitBtn.textContent = "Save";
-      editLinksDiv.style.display = "flex";
-      timesLink.href = `event-times.html?eventTypeId=${encodeURIComponent(editId)}`;
-      datesLink.href = `event-dates.html?eventTypeId=${encodeURIComponent(editId)}`;
-      const endpoint = await getEndpoint();
-      if (!endpoint) { setStatus("No subscription found."); return; }
-      setStatus("Loading…");
-      try {
-        const res = await fetch(`${SERVER_URL}/event-types?endpoint=${encodeURIComponent(endpoint)}`);
-        if (!res.ok) throw new Error(`Server error: ${res.status}`);
-        const types = await res.json();
-        const existing = types.find(t => t.id === editId);
-        if (!existing) { setStatus("Event type not found."); return; }
-        nameInput.value = existing.name;
-        colorInput.value = existing.color;
-        setStatus("");
-      } catch (err) {
-        setStatus(`❌ Error: ${err.message}`);
-      }
-    }
-
-    loadExisting();
-
-    form.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const name = nameInput.value.trim();
-      const color = colorInput.value;
-
-      if (!name) { setStatus("Enter a name."); return; }
-      if (!color) { setStatus("Select a color."); return; }
-
-      const endpoint = await getEndpoint();
-      if (!endpoint) { setStatus("No subscription found."); return; }
-
-      submitBtn.disabled = true;
-      setStatus("Saving…");
-
-      try {
-        const method = editId ? "PUT" : "POST";
-        const body = editId
-          ? { endpoint, id: editId, name, color }
-          : { endpoint, name, color };
-
-        const res = await fetch(`${SERVER_URL}/event-types`, {
-          method,
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        });
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({}));
-          throw new Error(err.error || `Server error: ${res.status}`);
+        async function getEndpoint() {
+            if (!("serviceWorker" in navigator) || !("PushManager" in window)) return null;
+            const reg = await navigator.serviceWorker.getRegistration("sw.js");
+            if (!reg) return null;
+            const sub = await reg.pushManager.getSubscription();
+            return sub ? sub.endpoint : null;
         }
-        window.location.href = "index.html";
-      } catch (err) {
-        setStatus(`❌ Error: ${err.message}`);
-        submitBtn.disabled = false;
-      }
-    });
-  </script>
+
+        // Check if we are editing an existing event type (id passed via query string)
+        const params = new URLSearchParams(window.location.search);
+        const editId = params.get("id");
+
+        const editLinksDiv = document.getElementById("editLinks");
+        const timesLink = document.getElementById("timesLink");
+        const datesLink = document.getElementById("datesLink");
+
+        async function loadExisting() {
+            if (!editId) return;
+            pageTitle.textContent = "Edit Event Type";
+            submitBtn.textContent = "Save";
+            editLinksDiv.classList.remove("hidden");
+            timesLink.href = `event-times.html?eventTypeId=${encodeURIComponent(editId)}`;
+            datesLink.href = `event-dates.html?eventTypeId=${encodeURIComponent(editId)}`;
+            const endpoint = await getEndpoint();
+            if (!endpoint) { setStatus("No subscription found."); return; }
+            setStatus("Loading…");
+            try {
+                const res = await fetch(`${SERVER_URL}/event-types?endpoint=${encodeURIComponent(endpoint)}`);
+                console.log(res);
+                if (!res.ok) throw new Error(`Server error: ${res.status}`);
+                const types = await res.json();
+                const existing = types.find(t => t.id === editId);
+                if (!existing) { setStatus("Event type not found."); return; }
+                nameInput.value = existing.name;
+                colorInput.value = existing.color;
+                setStatus("");
+            } catch (err) {
+                setStatus(`❌ Error: ${err.message}`);
+            }
+        }
+
+        loadExisting();
+
+        form.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const name = nameInput.value.trim();
+            const color = colorInput.value;
+
+            if (!name) { setStatus("Enter a name."); return; }
+            if (!color) { setStatus("Select a color."); return; }
+
+            const endpoint = await getEndpoint();
+            if (!endpoint) { setStatus("No subscription found."); return; }
+
+            submitBtn.disabled = true;
+            setStatus("Saving…");
+
+            try {
+                const method = editId ? "PUT" : "POST";
+                const body = editId
+                    ? { endpoint, id: editId, name, color }
+                    : { endpoint, name, color };
+
+                const res = await fetch(`${SERVER_URL}/event-types`, {
+                    method,
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(body),
+                });
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    throw new Error(err.error || `Server error: ${res.status}`);
+                }
+                window.location.href = "index.html";
+            } catch (err) {
+                setStatus(`❌ Error: ${err.message}`);
+                submitBtn.disabled = false;
+            }
+        });
+    </script>
 </body>
+
 </html>

@@ -1,32 +1,36 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Yet Again — Push Notifications</title>
-  <link rel="manifest" href="manifest.json" />
-  <meta name="theme-color" content="#1a1a2e" />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Yet Again — Push Notifications</title>
+    <link rel="manifest" href="manifest.json" />
+    <link rel="stylesheet" href="style.css" />
+    <meta name="theme-color" content="#1a1a2e" />
 </head>
-<body style="display:flex;flex-direction:column;align-items:center;">
-  <h1>Yet Again</h1>
-  <p>Scheduled push notification demo</p>
 
-  <div id="notSubscribed" style="display:none;flex-direction:column;align-items:center;">
-    <button id="enableBtn">Enable Notifications</button>
-  </div>
+<body class="flex flex-col items-center">
+    <h1>Yet Again</h1>
+    <p>Scheduled push notification demo</p>
 
-  <div id="subscribed" style="display:none;flex-direction:column;align-items:center;">
-    <div style="display:flex;gap:0.5rem;">
-      <button id="unsubscribeBtn">Unsubscribe</button>
-      <a href="event-type-form.html">+ New Type</a>
+    <div id="notSubscribed" class="flex flex-col items-center hidden">
+        <button id="enableBtn">Enable Notifications</button>
     </div>
-    <div id="content" style="display:flex;flex-direction:column;align-items:stretch;"></div>
-  </div>
 
-  <div id="status"></div>
+    <div id="subscribed" class="flex flex-col items-center hidden gap-4">
+        <div class="flex gap-4 items-center">
+            <button id="unsubscribeBtn">Unsubscribe</button>
+            <a href="event-type-form.html">Add Type</a>
+        </div>
+        <div id="content" class="flex flex-col items-stretch border p-2 gap-2"></div>
+    </div>
 
-  <p><a href="privacy.html">Privacy Policy</a></p>
+    <div id="status"></div>
 
-  <script src="app.js"></script>
+    <p><a href="privacy.html">Privacy Policy</a></p>
+
+    <script src="js/app.js" type="module"></script>
 </body>
+
 </html>

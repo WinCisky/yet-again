@@ -17,13 +17,14 @@ npx web-push generate-vapid-keys
 ### Run the server locally
 
 ```bash
-deno run --allow-net --env-file --unstable-cron server/server.ts
+deno run --allow-net --env-file --allow-env --unstable-cron --unstable-kv server/server.ts
 ```
 
 ### Serve the client locally
 
 ```bash
-npx serve docs/
+cd docs
+npx http-server -p 3000
 ```
 
 Then open `http://localhost:3000` (or whichever port `serve` uses).
